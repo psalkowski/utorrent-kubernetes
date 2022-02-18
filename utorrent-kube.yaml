@@ -50,18 +50,21 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: ut-service
   namespace: utorrent
-  name: utorrent
 spec:
   ports:
-  - name: "8080"
-    port: 8080
-    targetPort: 8080
-  - name: "6881"
-    port: 6881
-    targetPort: 6881
+   - name: http
+     port: 8080
+     targetPort: 8080
+   - name: tcp
+     port: 6881
+     targetPort: 6881
+  externalIPs: 
+    - 10.1.1.200
   selector:
     app: utorrent
+  type: LoadBalancer
 status:
   loadBalancer: {}
 
@@ -70,8 +73,8 @@ status:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: ut-deployment
   namespace: utorrent
-  name: utorrent
 spec:
   replicas: 1
   selector:
@@ -107,3 +110,55 @@ spec:
         persistentVolumeClaim:
           claimName: ut-pvc
 status: {}
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ut-secret
+  namespace: utorrent
+data:
+  tls.crt: base64 encoded cert
+  tls.key: base64 encoded key
+type: kubernetes.io/tls
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: ut-ingressclass
+  namespace: utorrent
+spec:
+  controller: nginx.org/ingress-controller 
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ut-ingress
+  namespace: utorrent
+spec:
+  defaultBackend:
+    service:
+      name: ut-service
+      port:
+        number: 8080
+  ingressClassName: ut-ingressclass
+  tls:
+  - hosts:
+    - utorrent.nb41.tech
+    secretName: ut-secret
+  rules:
+  - host: utorrent.nb41.tech
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ut-service
+            port:
+              number: 8080
