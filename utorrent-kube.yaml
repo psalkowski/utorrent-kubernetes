@@ -55,19 +55,27 @@ metadata:
 spec:
   ports:
    - name: http
+     nodePort: 30800
      port: 8080
      targetPort: 8080
    - name: tcp
+     nodePort: 31770
      port: 6881
+     protocol: TCP
      targetPort: 6881
-  externalIPs: 
-    - 10.1.1.200
+   - name: udp
+     nodePort: 31770
+     port: 6881 
+     protocol: UDP
+     targetPort: 6881
   selector:
     app: utorrent
-  type: LoadBalancer
+  type: NodePort
+  externalTrafficPolicy: Local
+  internalTrafficPolicy: Local
 status:
   loadBalancer: {}
-
+  
 ---
 
 apiVersion: apps/v1
@@ -113,18 +121,6 @@ status: {}
 
 ---
 
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ut-secret
-  namespace: utorrent
-data:
-  tls.crt: base64 encoded cert
-  tls.key: base64 encoded key
-type: kubernetes.io/tls
-
----
-
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
@@ -155,10 +151,17 @@ spec:
   - host: utorrent.nb41.tech
     http:
       paths:
-      - path: /
+      - path: /gui
         pathType: Prefix
         backend:
           service:
             name: ut-service
             port:
               number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ut-service
+            port:
+              number: 6881
