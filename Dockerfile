@@ -1,3 +1,15 @@
+FROM golang:1.9 as confd
+
+ARG CONFD_VERSION=0.16.0
+
+ADD https://github.com/kelseyhightower/confd/archive/v${CONFD_VERSION}.tar.gz /tmp/
+
+RUN mkdir -p /go/src/github.com/kelseyhightower/confd && \
+  cd /go/src/github.com/kelseyhightower/confd && \
+  tar --strip-components=1 -zxf /tmp/v${CONFD_VERSION}.tar.gz && \
+  go install github.com/kelseyhightower/confd && \
+  rm -rf /tmp/v${CONFD_VERSION}.tar.gz
+
 FROM ubuntu:18.04
 LABEL Maintainer="Yuri L Chuk"
 
@@ -11,6 +23,8 @@ RUN set -eux; \
     groupadd --gid 1001 utorrent; \
     useradd --uid 1001 --gid utorrent --groups tty --home-dir /utorrent --create-home --shell /bin/bash utorrent;
 
+COPY --from=confd /go/bin/confd /usr/local/bin/confd
+
 #
 # Install utorrent and all required dependencies.
 #
@@ -22,17 +36,15 @@ RUN echo '--> Installing packages and utserver...'; \
     apt-get -y clean; \
     rm -rf /var/lib/apt/lists/*; \
     rm -rf /var/cache/apt/*; \
-    echo '--> Setup confd'; \
-    curl -fSL --output /confd https://github.com/kelseyhightower/confd/releases/download/v${CONFD_VERSION}/confd-${CONFD_VERSION}-linux-amd64; \
-    chmod +x /confd; \
     echo '--> Make dirs'; \
-    mkdir \
+    mkdir -p \
         /utorrent/shared/download \
         /utorrent/shared/torrent \
         /utorrent/shared/done \
         /utorrent/settings \
         /utorrent/temp; \
     chown -R utorrent:utorrent /utorrent;
+
 
 #
 # Copy confd configs and templates
@@ -43,7 +55,7 @@ ADD --chown=utorrent:utorrent confd/ /etc/confd/
 # Add utorrent init script.
 #
 ADD --chown=utorrent:utorrent utorrent.sh /
-RUN set -eux; chmod +x /utorrent.sh
+RUN set -eux; chmod +x /utorrent.sh; chmod +x /usr/local/bin/confd;
 
 WORKDIR /utorrent
 

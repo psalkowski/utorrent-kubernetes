@@ -63,6 +63,6 @@ fi
 #
 echo " "
 echo '-> Starting utorrent server......'
-sudo -E -u utorrent -g utorrent -- /confd -onetime -backend env ${CONFD_LOGLEVEL} || exit 13
+sudo -E -u utorrent -g utorrent -- /usr/local/bin/confd -onetime -backend env ${CONFD_LOGLEVEL} || exit 13
 exec sudo -E -u utorrent -g utorrent -- "$@"
 echo '#################################### UTSERVER ####################################'
